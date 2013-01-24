@@ -1,0 +1,35 @@
+# Syntax coloring map for Enrf24
+
+# Datatypes (KEYWORD1)
+Enrf24	KEYWORD1
+
+# Methods and Functions (KEYWORD2)
+read	KEYWORD2
+flush	KEYWORD2
+purge	KEYWORD2
+radioStatus	KEYWORD2
+deepsleep	KEYWORD2
+enableRX	KEYWORD2
+disableRX	KEYWORD2
+autoAck	KEYWORD2
+setChannel	KEYWORD2
+setTXpower	KEYWORD2
+setSpeed	KEYWORD2
+setCRC	KEYWORD2
+setAutoAckParams	KEYWORD2
+setAddressLength	KEYWORD2
+setRXaddress	KEYWORD2
+setTXaddress	KEYWORD2
+rfSignalDetected	KEYWORD2
+
+
+# Setup and loop functions (KEYWORD3)
+begin	KEYWORD3
+end	KEYWORD3
+available	KEYWORD3
+
+# Constants (LITERAL1)
+ENRF24_STATE_DEEPSLEEP	LITERAL1
+ENRF24_STATE_IDLE	LITERAL1
+ENRF24_STATE_PTX	LITERAL1
+ENRF24_STATE_PRX	LITERAL1

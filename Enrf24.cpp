@@ -1,0 +1,502 @@
+/* nRF24L01+ I/O for Energia
+ *
+ * Copyright (c) 2013 Eric Brundick <spirilis [at] linux dot com>
+ *  Permission is hereby granted, free of charge, to any person 
+ *  obtaining a copy of this software and associated documentation 
+ *  files (the "Software"), to deal in the Software without 
+ *  restriction, including without limitation the rights to use, copy, 
+ *  modify, merge, publish, distribute, sublicense, and/or sell copies 
+ *  of the Software, and to permit persons to whom the Software is 
+ *  furnished to do so, subject to the following conditions:
+ *
+ *  The above copyright notice and this permission notice shall be 
+ *  included in all copies or substantial portions of the Software.
+ *
+ *  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, 
+ *  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF 
+ *  MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND 
+ *  NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT 
+ *  HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, 
+ *  WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, 
+ *  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER 
+ *  DEALINGS IN THE SOFTWARE.
+ */
+
+#include <Energia.h>
+#include <stdint.h>
+#include "Enrf24.h"
+
+/* Constructor */
+Enrf24::Enrf24(uint8_t cePin, uint8_t csnPin, uint8_t irqPin)
+{
+  _cePin = cePin;
+  _csnPin = csnPin;
+  _irqPin = irqPin;
+
+  rf_status = 0;
+  rf_addr_width = 5;
+  txbuf_len = 0;
+}
+
+/* Initialization */
+void Enrf24::begin(uint32_t datarate, uint8_t channel)
+{
+  pinMode(_cePin, OUTPUT);
+  digitalWrite(_cePin, LOW);
+  pinMode(_csnPin, OUTPUT);
+  digitalWrite(_csnPin, HIGH);
+  pinMode(_irqPin, INPUT);
+  digitalWrite(_irqPin, LOW);  // No pullups; the transceiver provides this!
+
+  SPI.transfer(0);  // Strawman transfer, fixes USCI issue on G2553
+
+  // Is the transceiver present/alive?
+  if (!_isAlive())
+    return;  // Nothing more to do here...
+
+  // Init certain registers
+  _writeReg(RF24_CONFIG, 0x00);  // Deep power-down, everything disabled
+  _writeReg(RF24_EN_AA, 0x03);
+  _writeReg(RF24_EN_RXADDR, 0x03);
+  _writeReg(RF24_RF_SETUP, 0x00);
+  _writeReg(RF24_STATUS, ENRF24_IRQ_MASK);  // Clear all IRQs
+  _writeReg(RF24_DYNPD, 0x03);
+  _writeReg(RF24_FEATURE, RF24_EN_DPL);  // Dynamic payloads enabled by default
+
+  // Set all parameters
+  if (channel > 125)
+    channel = 125;
+  deepsleep();
+  _issueCmd(RF24_FLUSH_TX);
+  _issueCmd(RF24_FLUSH_RX);
+  _irq_clear(ENRF24_IRQ_MASK);
+  setChannel(channel);
+  setSpeed(datarate);
+  setTXpower();
+  setAutoAckParams();
+  setAddressLength(rf_addr_width);
+  setCRC(true);  // Default = CRC on, 8-bit
+}
+
+/* Formal shut-down/clearing of library state */
+void Enrf24::end()
+{
+  txbuf_len = 0;
+  rf_status = 0;
+  rf_addr_width = 5;
+
+  if (!_isAlive())
+    return;
+  deepsleep();
+  _issueCmd(RF24_FLUSH_TX);
+  _issueCmd(RF24_FLUSH_RX);
+  _irq_clear(ENRF24_IRQ_MASK);
+  digitalWrite(_cePin, LOW);
+  digitalWrite(_csnPin, HIGH);
+}
+
+/* Basic SPI I/O */
+uint8_t Enrf24::_readReg(uint8_t addr)
+{
+  uint8_t result;
+
+  digitalWrite(_csnPin, LOW);
+  rf_status = SPI.transfer(RF24_R_REGISTER | addr);
+  result = SPI.transfer(RF24_NOP);
+  digitalWrite(_csnPin, HIGH);
+  return result;
+}
+
+void Enrf24::_readRegMultiLSB(uint8_t addr, uint8_t *buf, size_t len)
+{
+  uint8_t i;
+  digitalWrite(_csnPin, LOW);
+  rf_status = SPI.transfer(RF24_R_REGISTER | addr);
+  for (i=0; i<len; i++) {
+    buf[len-i-1] = SPI.transfer(RF24_NOP);
+  }
+  digitalWrite(_csnPin, HIGH);
+}
+
+void Enrf24::_writeReg(uint8_t addr, uint8_t val)
+{
+  digitalWrite(_csnPin, LOW);
+  rf_status = SPI.transfer(RF24_W_REGISTER | addr);
+  SPI.transfer(val);
+  digitalWrite(_csnPin, HIGH);
+}
+
+void Enrf24::_writeRegMultiLSB(uint8_t addr, uint8_t *buf, size_t len)
+{
+  size_t i;
+
+  digitalWrite(_csnPin, LOW);
+  rf_status = SPI.transfer(RF24_W_REGISTER | addr);
+  for (i=0; i<len; i++) {
+    SPI.transfer(buf[len-i-1]);
+  }
+  digitalWrite(_csnPin, HIGH);
+}
+
+void Enrf24::_issueCmd(uint8_t cmd)
+{
+  digitalWrite(_csnPin, LOW);
+  rf_status = SPI.transfer(cmd);
+  digitalWrite(_csnPin, HIGH);
+}
+
+void Enrf24::_issueCmdPayload(uint8_t cmd, uint8_t *buf, size_t len)
+{
+  size_t i;
+
+  digitalWrite(_csnPin, LOW);
+  rf_status = SPI.transfer(cmd);
+  for (i=0; i<len; i++) {
+    SPI.transfer(buf[i]);
+  }
+  digitalWrite(_csnPin, HIGH);
+}
+
+void Enrf24::_readCmdPayload(uint8_t cmd, uint8_t *buf, size_t len, size_t maxlen)
+{
+  size_t i;
+
+  digitalWrite(_csnPin, LOW);
+  rf_status = SPI.transfer(cmd);
+  for (i=0; i<len; i++) {
+    if (i < maxlen) {
+      buf[i] = SPI.transfer(RF24_NOP);
+    } else {
+      SPI.transfer(RF24_NOP);  // Beyond maxlen bytes, just discard the remaining data.
+    }
+  }
+  digitalWrite(_csnPin, HIGH);
+}
+
+boolean Enrf24::_isAlive()
+{
+  uint8_t aw;
+
+  aw = _readReg(RF24_SETUP_AW);
+  return ((aw & 0xFC) == 0x00 && (aw & 0x03) != 0x00);
+}
+
+uint8_t Enrf24::_irq_getreason()
+{
+  lastirq = _readReg(RF24_STATUS) & ENRF24_IRQ_MASK;
+  return lastirq;
+}
+
+// Get IRQ from last known rf_status update without querying module over SPI.
+uint8_t Enrf24::_irq_derivereason()
+{
+  lastirq = rf_status & ENRF24_IRQ_MASK;
+  return lastirq;
+}
+
+void Enrf24::_irq_clear(uint8_t irq)
+{
+  _writeReg(RF24_STATUS, irq & ENRF24_IRQ_MASK);
+}
+
+#define ENRF24_CFGMASK_CRC(a) (a & (RF24_EN_CRC | RF24_CRCO))
+
+void Enrf24::_readTXaddr(uint8_t *buf)
+{
+  _readRegMultiLSB(RF24_TX_ADDR, buf, rf_addr_width);
+}
+
+void Enrf24::_writeRXaddrP0(uint8_t *buf)
+{
+  _writeRegMultiLSB(RF24_RX_ADDR_P0, buf, rf_addr_width);
+}
+
+
+/* nRF24 I/O maintenance--called as a "hook" inside other I/O functions to give
+ * the library a chance to take care of its buffers et al
+ */
+void Enrf24::_maintenanceHook()
+{
+  uint8_t i;
+
+  _irq_getreason();
+
+  if (lastirq & ENRF24_IRQ_TXFAILED) {
+    lastTxFailed = true;
+    _issueCmd(RF24_FLUSH_TX);
+    _irq_clear(ENRF24_IRQ_TXFAILED);
+  }
+
+  if (lastirq & ENRF24_IRQ_TX) {
+    lastTxFailed = false;
+    _irq_clear(ENRF24_IRQ_TX);
+  }
+
+  if (lastirq & ENRF24_IRQ_RX) {
+    if ( !(_readReg(RF24_FIFO_STATUS) & RF24_RX_FULL) ) {  /* Don't feel it's necessary
+                                                            * to be notified of new
+                                                            * incoming packets if the RX
+                                                            * queue is full.
+                                                            */
+      _irq_clear(ENRF24_IRQ_RX);
+    }
+
+    /* Check if RX payload is 0-byte or >32byte (erroneous conditions)
+     * Also check if data was received on pipe#0, which we are ignoring.
+     * The reason for this is pipe#0 is needed for receiving AutoACK acknowledgements,
+     * its address gets reset to the module's default and we do not care about data
+     * coming in to that address...
+     */
+    _readCmdPayload(RF24_R_RX_PL_WID, &i, 1, 1);
+    if (i == 0 || i > 32 || ((rf_status & 0x0E) >> 1) == 0) {
+                             /* Zero-width RX payload is an error that happens a lot
+                              * with non-AutoAck, and must be cleared with FLUSH_RX.
+                              * Erroneous >32byte packets are a similar phenomenon.
+                              */
+      _issueCmd(RF24_FLUSH_RX);
+      _irq_clear(ENRF24_IRQ_RX);
+    }
+    // Actual scavenging of RX queues is performed by user-directed use of read().
+  }
+}
+
+
+
+/* Public functions */
+boolean Enrf24::available(boolean checkIrq)
+{
+  if (checkIrq && digitalRead(_irqPin) == HIGH)
+    return false;
+  _maintenanceHook();
+  if ( !(_readReg(RF24_FIFO_STATUS) & RF24_RX_EMPTY) ) {
+    return true;
+  }
+  return false;
+}
+
+size_t Enrf24::read(void *inbuf, uint8_t maxlen)
+{
+  uint8_t *buf = (uint8_t *)inbuf;
+  uint8_t plwidth;
+
+  _maintenanceHook();
+  if ((_readReg(RF24_FIFO_STATUS) & RF24_RX_EMPTY) || maxlen < 1) {
+    return 0;
+  }
+  _readCmdPayload(RF24_R_RX_PL_WID, &plwidth, 1, 1);
+  _readCmdPayload(RF24_R_RX_PAYLOAD, buf, plwidth, maxlen);
+  buf[plwidth] = '\0';  // Zero-terminate in case this is a string.
+  if (_irq_derivereason() & ENRF24_IRQ_RX) {
+    _irq_clear(ENRF24_IRQ_RX);
+  }
+
+  return (size_t) plwidth;
+}
+
+// Perform TX of current ring-buffer contents
+void Enrf24::flush()
+{
+  uint8_t reg, addrbuf[5];
+  boolean enaa=false;
+
+  reg = _readReg(RF24_FIFO_STATUS);
+  if (reg & BIT5) {  // RF24_TX_FULL #define is BIT0, which is not the correct bit for FIFO_STATUS.
+    return;  // Should never happen, but nonetheless a precaution to take.
+  }
+
+  _maintenanceHook();
+
+  if (reg & RF24_TX_REUSE) {
+    // If somehow TX_REUSE is enabled, we need to flush the TX queue before loading our new payload.
+    _issueCmd(RF24_FLUSH_TX);
+  }
+
+  if (_readReg(RF24_EN_AA) & 0x01) {  // AutoACK enabled, must write TX addr to RX pipe#0
+    enaa = true;
+    _readTXaddr(addrbuf);
+    _writeRXaddrP0(addrbuf);
+  }
+
+  reg = _readReg(RF24_CONFIG);
+  if ( !(reg & RF24_PWR_UP) ) {
+    _writeReg(RF24_CONFIG, ENRF24_CFGMASK_IRQ | ENRF24_CFGMASK_CRC(reg) | RF24_PWR_UP);
+    delay(5);  // 5ms delay required for nRF24 oscillator start-up
+  }
+
+  _issueCmdPayload(RF24_W_TX_PAYLOAD, txbuf, txbuf_len);
+  digitalWrite(_cePin, HIGH);
+  delayMicroseconds(30);
+  digitalWrite(_cePin, LOW);
+
+  txbuf_len = 0;  // Reset TX ring buffer
+
+  while (digitalRead(_irqPin) == HIGH)  // Wait until IRQ fires
+    ;
+  // IRQ fired
+  _maintenanceHook();  // Handle/clear IRQ
+
+  // Purge Pipe#0 address (set to module's power-up default)
+  if (enaa) {
+    addrbuf[0] = 0xE7; addrbuf[1] = 0xE7; addrbuf[2] = 0xE7; addrbuf[3] = 0xE7; addrbuf[4] = 0xE7;
+    _writeRXaddrP0(addrbuf);
+  }
+}
+
+void Enrf24::purge()
+{
+  txbuf_len = 0;
+}
+
+size_t Enrf24::write(uint8_t c)
+{
+  txbuf[txbuf_len] = c;
+  txbuf_len++;
+
+  if (txbuf_len == 32) {
+    flush();  // Blocking OTA TX
+  }
+
+  return 1;
+}
+
+void Enrf24::deepsleep()
+{
+  uint8_t reg;
+
+  reg = _readReg(RF24_CONFIG);
+  if (reg & (RF24_PWR_UP | RF24_PRIM_RX)) {
+    _writeReg(RF24_CONFIG, ENRF24_CFGMASK_IRQ | ENRF24_CFGMASK_CRC(reg));
+  }
+  digitalWrite(_cePin, LOW);
+}
+
+void Enrf24::enableRX()
+{
+  uint8_t reg;
+
+  reg = _readReg(RF24_CONFIG);
+  _writeReg(RF24_CONFIG, ENRF24_CFGMASK_IRQ | ENRF24_CFGMASK_CRC(reg) | RF24_PWR_UP | RF24_PRIM_RX);
+  digitalWrite(_cePin, HIGH);
+
+  if ( !(reg & RF24_PWR_UP) ) {  // Powering up from deep-sleep requires 5ms oscillator start delay
+    delay(5);
+  }
+}
+
+void Enrf24::disableRX()
+{
+  uint8_t reg;
+
+  digitalWrite(_cePin, LOW);
+
+  reg = _readReg(RF24_CONFIG);
+  if (reg & RF24_PWR_UP) {  /* Keep us in standby-I if we're coming from RX mode, otherwise stay
+                             * in deep-sleep if we call this while already in PWR_UP=0 mode.
+                             */
+    _writeReg(RF24_CONFIG, ENRF24_CFGMASK_IRQ | ENRF24_CFGMASK_CRC(reg) | RF24_PWR_UP);
+  } else {
+    _writeReg(RF24_CONFIG, ENRF24_CFGMASK_IRQ | ENRF24_CFGMASK_CRC(reg));
+  }
+}
+
+void Enrf24::autoAck(boolean onoff)
+{
+  uint8_t reg;
+
+  reg = _readReg(RF24_EN_AA);
+  if (onoff) {
+    if ( !(reg & 0x01) || !(reg & 0x02) ) {
+      _writeReg(RF24_EN_AA, 0x03);
+    }
+  } else {
+    if (reg & 0x03) {
+      _writeReg(RF24_EN_AA, 0x00);
+    }
+  }
+}
+
+void Enrf24::setChannel(uint8_t channel)
+{
+  if (channel > 125)
+    channel = 125;
+  _writeReg(RF24_RF_CH, channel);
+}
+
+void Enrf24::setTXpower(int8_t dBm)
+{
+  uint8_t reg, pwr;
+
+  reg = _readReg(RF24_RF_SETUP) & 0xF8;  // preserve RF speed settings
+  pwr = 0x03;
+  if (dBm < 0)
+    pwr = 0x02;
+  if (dBm < -6)
+    pwr = 0x01;
+  if (dBm < -12)
+    pwr = 0x00;
+  _writeReg(RF24_RF_SETUP, reg | (pwr << 1));
+}
+
+void Enrf24::setSpeed(uint32_t rfspeed)
+{
+  uint8_t reg, spd;
+
+  reg = _readReg(RF24_RF_SETUP) & 0xD7;  // preserve RF power settings
+  spd = 0x01;
+  if (rfspeed < 2000000)
+    spd = 0x00;
+  if (rfspeed < 1000000)
+    spd = 0x04;
+  _writeReg(RF24_RF_SETUP, reg | (spd << 3));
+}
+
+void Enrf24::setCRC(boolean onoff, boolean crc16bit)
+{
+  uint8_t reg, crcbits=0;
+
+  reg = _readReg(RF24_CONFIG) & 0xF3;  // preserve IRQ mask, PWR_UP/PRIM_RX settings
+  if (onoff)
+    crcbits |= RF24_EN_CRC;
+  if (crc16bit)
+    crcbits |= RF24_CRCO;
+  _writeReg(RF24_CONFIG, reg | crcbits);
+}
+
+void Enrf24::setAutoAckParams(uint8_t autoretry_count, uint16_t autoretry_timeout)
+{
+  uint8_t setup_retr=0;
+
+  setup_retr = autoretry_count & 0x0F;
+  autoretry_timeout -= 250;
+  setup_retr |= ((autoretry_timeout / 250) & 0x0F) << 4;
+  _writeReg(RF24_SETUP_RETR, setup_retr);
+}
+
+void Enrf24::setAddressLength(size_t len)
+{
+  if (len < 3)
+    len = 3;
+  if (len > 5)
+    len = 5;
+
+  _writeReg(RF24_SETUP_AW, len-2);
+  rf_addr_width = len;
+}
+
+void Enrf24::setRXaddress(void *rxaddr)
+{
+  _writeRegMultiLSB(RF24_RX_ADDR_P1, (uint8_t*)rxaddr, rf_addr_width);
+}
+
+void Enrf24::setTXaddress(void *rxaddr)
+{
+  _writeRegMultiLSB(RF24_TX_ADDR, (uint8_t*)rxaddr, rf_addr_width);
+}
+
+boolean Enrf24::rfSignalDetected()
+{
+  uint8_t rpd;
+
+  rpd = _readReg(RF24_RPD);
+  return (boolean)rpd;
+}
