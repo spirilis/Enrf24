@@ -359,6 +359,30 @@ size_t Enrf24::write(uint8_t c)
   return 1;
 }
 
+uint8_t Enrf24::radioState()
+{
+  uint8_t reg;
+
+  if (!_isAlive())
+    return ENRF24_STATE_NOTPRESENT;
+  
+  reg = _readReg(RF24_CONFIG);
+  if ( !(reg & RF24_PWR_UP) )
+    return ENRF24_STATE_DEEPSLEEP;
+
+  // At this point it's either Standby-I, II or PRX.
+  if (reg & RF24_PRIM_RX) {
+    if (digitalRead(_cePin))
+      return ENRF24_STATE_PRX;
+    // PRIM_RX=1 but CE=0 is a form of idle state.
+    return ENRF24_STATE_IDLE;
+  }
+  // Check if TX queue is empty, if so it's idle, if not it's PTX.
+  if (_readReg(RF24_FIFO_STATUS) & RF24_TX_EMPTY)
+    return ENRF24_STATE_IDLE;
+  return ENRF24_STATE_PTX;
+}
+
 void Enrf24::deepsleep()
 {
   uint8_t reg;

@@ -32,10 +32,11 @@
 #include "nRF24L01.h"
 
 /* Constants for speed, radio state */
-#define ENRF24_STATE_DEEPSLEEP 0
-#define ENRF24_STATE_IDLE 1
-#define ENRF24_STATE_PTX 2
-#define ENRF24_STATE_PRX 3
+#define ENRF24_STATE_NOTPRESENT 0
+#define ENRF24_STATE_DEEPSLEEP 1
+#define ENRF24_STATE_IDLE 2
+#define ENRF24_STATE_PTX 3
+#define ENRF24_STATE_PRX 4
 
 /* Internal IRQ handling */
 #define ENRF24_IRQ_TX       0x20
@@ -67,7 +68,7 @@ class Enrf24 : public Print {
     void purge();    // Ignore TX ring buffer contents, return ring pointer to 0.
 
     // Power-state related stuff-
-    uint8_t radioStatus();  // Evaluate current state of the transceiver (see ENRF24_STATE_* defines)
+    uint8_t radioState();  // Evaluate current state of the transceiver (see ENRF24_STATE_* defines)
     void deepsleep();  // Enter POWERDOWN mode, ~0.9uA power consumption
     void enableRX();   // Enter PRX mode (~14mA)
     void disableRX();  /* Disable PRX mode (PRIM_RX bit in CONFIG register)
