@@ -311,7 +311,10 @@ void Enrf24::flush()
     _issueCmd(RF24_FLUSH_TX);
   }
 
-  if (_readReg(RF24_EN_AA) & 0x01) {  // AutoACK enabled, must write TX addr to RX pipe#0
+  if (_readReg(RF24_EN_AA) & 0x01 && (_readReg(RF24_RF_SETUP) & 0x28) != 0x20) {
+    /* AutoACK enabled, must write TX addr to RX pipe#0
+     * Note that 250Kbps doesn't support auto-ack, so we check RF24_RF_SETUP to verify that.
+     */
     enaa = true;
     _readTXaddr(addrbuf);
     _writeRXaddrP0(addrbuf);
