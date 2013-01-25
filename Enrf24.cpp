@@ -297,7 +297,7 @@ size_t Enrf24::read(void *inbuf, uint8_t maxlen)
 void Enrf24::flush()
 {
   uint8_t reg, addrbuf[5];
-  boolean enaa=false;
+  boolean enaa=false, origrx=false;
 
   reg = _readReg(RF24_FIFO_STATUS);
   if (reg & BIT5) {  // RF24_TX_FULL #define is BIT0, which is not the correct bit for FIFO_STATUS.
@@ -325,6 +325,11 @@ void Enrf24::flush()
     _writeReg(RF24_CONFIG, ENRF24_CFGMASK_IRQ | ENRF24_CFGMASK_CRC(reg) | RF24_PWR_UP);
     delay(5);  // 5ms delay required for nRF24 oscillator start-up
   }
+  if (reg & RF24_PRIM_RX) {
+    origrx=true;
+    digitalWrite(_cePin, LOW);
+    _writeReg(RF24_CONFIG, ENRF24_CFGMASK_IRQ | ENRF24_CFGMASK_CRC(reg) | RF24_PWR_UP);
+  }
 
   _issueCmdPayload(RF24_W_TX_PAYLOAD, txbuf, txbuf_len);
   digitalWrite(_cePin, HIGH);
@@ -342,6 +347,11 @@ void Enrf24::flush()
   if (enaa) {
     addrbuf[0] = 0xE7; addrbuf[1] = 0xE7; addrbuf[2] = 0xE7; addrbuf[3] = 0xE7; addrbuf[4] = 0xE7;
     _writeRXaddrP0(addrbuf);
+  }
+
+  // If we were in RX mode before writing, return back to RX mode.
+  if (origrx) {
+    enableRX();
   }
 }
 
