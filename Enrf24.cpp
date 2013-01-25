@@ -299,6 +299,9 @@ void Enrf24::flush()
   uint8_t reg, addrbuf[5];
   boolean enaa=false, origrx=false;
 
+  if (!txbuf_len)
+    return;  // Zero-length buffer?  Nothing to send!
+
   reg = _readReg(RF24_FIFO_STATUS);
   if (reg & BIT5) {  // RF24_TX_FULL #define is BIT0, which is not the correct bit for FIFO_STATUS.
     return;  // Should never happen, but nonetheless a precaution to take.
