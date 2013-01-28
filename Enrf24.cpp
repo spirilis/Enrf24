@@ -222,13 +222,13 @@ void Enrf24::_maintenanceHook()
   _irq_getreason();
 
   if (lastirq & ENRF24_IRQ_TXFAILED) {
-    lastTxFailed = true;
+    lastTXfailed = true;
     _issueCmd(RF24_FLUSH_TX);
     _irq_clear(ENRF24_IRQ_TXFAILED);
   }
 
   if (lastirq & ENRF24_IRQ_TX) {
-    lastTxFailed = false;
+    lastTXfailed = false;
     _irq_clear(ENRF24_IRQ_TX);
   }
 

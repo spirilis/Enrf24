@@ -53,6 +53,8 @@
 /* Class definition--inherits from Print so we have .print() functions */
 class Enrf24 : public Print {
   public:
+    boolean lastTXfailed;
+
     Enrf24(uint8_t cePin, uint8_t csnPin, uint8_t irqPin);
     void begin(uint32_t datarate=1000000, uint8_t channel=0);  // Specify bitrate & channel
     void end();      // Shut it off, clear the library's state
@@ -109,7 +111,6 @@ class Enrf24 : public Print {
     uint8_t txbuf_len;
     uint8_t txbuf[32];
     uint8_t lastirq;
-    boolean lastTxFailed;
     uint8_t _cePin, _csnPin, _irqPin;
 
     uint8_t _readReg(uint8_t addr);
