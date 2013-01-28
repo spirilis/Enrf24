@@ -365,12 +365,12 @@ void Enrf24::purge()
 
 size_t Enrf24::write(uint8_t c)
 {
-  txbuf[txbuf_len] = c;
-  txbuf_len++;
-
-  if (txbuf_len == 32) {
+  if (txbuf_len == 32) {  // If we're trying to stuff an already-full buffer...
     flush();  // Blocking OTA TX
   }
+
+  txbuf[txbuf_len] = c;
+  txbuf_len++;
 
   return 1;
 }
