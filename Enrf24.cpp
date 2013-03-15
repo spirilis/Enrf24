@@ -36,6 +36,7 @@ Enrf24::Enrf24(uint8_t cePin, uint8_t csnPin, uint8_t irqPin)
   rf_status = 0;
   rf_addr_width = 5;
   txbuf_len = 0;
+  readpending = 0;
 }
 
 /* Initialization */
@@ -69,6 +70,7 @@ void Enrf24::begin(uint32_t datarate, uint8_t channel)
   deepsleep();
   _issueCmd(RF24_FLUSH_TX);
   _issueCmd(RF24_FLUSH_RX);
+  readpending = 0;
   _irq_clear(ENRF24_IRQ_MASK);
   setChannel(channel);
   setSpeed(datarate);
@@ -90,6 +92,7 @@ void Enrf24::end()
   deepsleep();
   _issueCmd(RF24_FLUSH_TX);
   _issueCmd(RF24_FLUSH_RX);
+  readpending = 0;
   _irq_clear(ENRF24_IRQ_MASK);
   digitalWrite(_cePin, LOW);
   digitalWrite(_csnPin, HIGH);
@@ -255,6 +258,9 @@ void Enrf24::_maintenanceHook()
                               */
       _issueCmd(RF24_FLUSH_RX);
       _irq_clear(ENRF24_IRQ_RX);
+      readpending = 0;
+    } else {
+      readpending = 1;
     }
     // Actual scavenging of RX queues is performed by user-directed use of read().
   }
@@ -265,10 +271,13 @@ void Enrf24::_maintenanceHook()
 /* Public functions */
 boolean Enrf24::available(boolean checkIrq)
 {
-  if (checkIrq && digitalRead(_irqPin) == HIGH)
+  if (checkIrq && digitalRead(_irqPin) == HIGH && readpending == 0)
     return false;
   _maintenanceHook();
   if ( !(_readReg(RF24_FIFO_STATUS) & RF24_RX_EMPTY) ) {
+    return true;
+  }
+  if (readpending) {
     return true;
   }
   return false;
@@ -280,6 +289,7 @@ size_t Enrf24::read(void *inbuf, uint8_t maxlen)
   uint8_t plwidth;
 
   _maintenanceHook();
+  readpending = 0;
   if ((_readReg(RF24_FIFO_STATUS) & RF24_RX_EMPTY) || maxlen < 1) {
     return 0;
   }

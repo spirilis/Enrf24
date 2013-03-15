@@ -110,7 +110,7 @@ class Enrf24 : public Print {
     uint8_t rf_addr_width;
     uint8_t txbuf_len;
     uint8_t txbuf[32];
-    uint8_t lastirq;
+    uint8_t lastirq, readpending;
     uint8_t _cePin, _csnPin, _irqPin;
 
     uint8_t _readReg(uint8_t addr);
