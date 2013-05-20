@@ -74,9 +74,6 @@ void loop()
   Serial.println("Channel scan done; halting CPU.  Hit RESET to do another scan.");
   Serial.flush();
   radio.deepsleep();
-  _DINT();  // Disable interrupts
-  LPM4;  /* Permanently halt the CPU once we're done.  The user can hit the RESET button
-          * on the LaunchPad to do another scan.
-          */
+  while(1) ;  // Permanently halt the CPU.  Using while(1) is more portable e.g. to Stellaris LP.
 }
 
