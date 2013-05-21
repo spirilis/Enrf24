@@ -3,7 +3,7 @@
 #include <string.h>
 #include <SPI.h>
 
-Enrf24 radio(PE_1, PE_2, PE_3);  // P2.0=CE, P2.1=CSN, P2.2=IRQ
+Enrf24 radio(PE_1, PE_2, PE_3);  // PE1 = CE, PE2 = CSN, PE3 = IRQ
 const uint8_t txaddr[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0x01 };
 
 const char *str_on = "ON";
