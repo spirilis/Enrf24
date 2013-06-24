@@ -55,6 +55,10 @@ void Enrf24::begin(uint32_t datarate, uint8_t channel)
   if (!_isAlive())
     return;  // Nothing more to do here...
 
+  // Wait 100ms for module to initialize
+  while ( millis() < 100 )
+    ;
+
   // Init certain registers
   _writeReg(RF24_CONFIG, 0x00);  // Deep power-down, everything disabled
   _writeReg(RF24_EN_AA, 0x03);
