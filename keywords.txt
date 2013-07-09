@@ -21,7 +21,7 @@ setAddressLength	KEYWORD2
 setRXaddress	KEYWORD2
 setTXaddress	KEYWORD2
 rfSignalDetected	KEYWORD2
-
+isLastTXfailed KEYWORD2
 
 # Setup and loop functions (KEYWORD3)
 begin	KEYWORD3
