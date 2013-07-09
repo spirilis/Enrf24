@@ -229,13 +229,13 @@ void Enrf24::_maintenanceHook()
   _irq_getreason();
 
   if (lastirq & ENRF24_IRQ_TXFAILED) {
-    lastTXfailed = true;
+    _lastTXfailed = true;
     _issueCmd(RF24_FLUSH_TX);
     _irq_clear(ENRF24_IRQ_TXFAILED);
   }
 
   if (lastirq & ENRF24_IRQ_TX) {
-    lastTXfailed = false;
+    _lastTXfailed = false;
     _irq_clear(ENRF24_IRQ_TX);
   }
 
@@ -375,6 +375,11 @@ void Enrf24::flush()
 void Enrf24::purge()
 {
   txbuf_len = 0;
+}
+
+// returns status of last transmission
+boolean Enrf24::isLastTXfailed(){
+    return _lastTXfailed;
 }
 
 size_t Enrf24::write(uint8_t c)

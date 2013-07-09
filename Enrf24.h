@@ -80,8 +80,8 @@
 /* Class definition--inherits from Print so we have .print() functions */
 class Enrf24 : public Print {
   public:
-    boolean lastTXfailed;
-
+    
+    boolean isLastTXfailed();
     Enrf24(uint8_t cePin, uint8_t csnPin, uint8_t irqPin);
     void begin(uint32_t datarate=1000000, uint8_t channel=0);  // Specify bitrate & channel
     void end();      // Shut it off, clear the library's state
@@ -155,6 +155,7 @@ class Enrf24 : public Print {
     void _writeRXaddrP0(uint8_t *buf);
     void _maintenanceHook();  // Handles IRQs and purges RX queue when erroneous contents exist.
 
+    boolean _lastTXfailed;
 /* Private planning:
    Need to keep track of:
 	RF status (since we get it after every SPI communication, might as well store it)
