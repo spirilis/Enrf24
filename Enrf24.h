@@ -122,8 +122,8 @@ class Enrf24 : public Print {
 
     // Protocol addressing -- receive, transmit addresses
     void setAddressLength(size_t len);  // Valid parameters = 3, 4 or 5.  Defaults to 5.
-    void setRXaddress(void *rxaddr);    // 3-5 byte RX address loaded into pipe#1
-    void setTXaddress(void *txaddr);    // 3-5 byte TX address loaded into TXaddr register
+    void setRXaddress(const void *rxaddr);    // 3-5 byte RX address loaded into pipe#1
+    void setTXaddress(const void *txaddr);    // 3-5 byte TX address loaded into TXaddr register
     
     // Miscellaneous feature
     boolean rfSignalDetected();  /* Read RPD register to determine if transceiver has presently detected an RF signal

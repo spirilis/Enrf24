@@ -537,12 +537,12 @@ void Enrf24::setAddressLength(size_t len)
   rf_addr_width = len;
 }
 
-void Enrf24::setRXaddress(void *rxaddr)
+void Enrf24::setRXaddress(const void *rxaddr)
 {
   _writeRegMultiLSB(RF24_RX_ADDR_P1, (uint8_t*)rxaddr, rf_addr_width);
 }
 
-void Enrf24::setTXaddress(void *rxaddr)
+void Enrf24::setTXaddress(const void *rxaddr)
 {
   _writeRegMultiLSB(RF24_TX_ADDR, (uint8_t*)rxaddr, rf_addr_width);
 }
