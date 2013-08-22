@@ -25,7 +25,7 @@
 #ifndef _ENRF24_H
 #define _ENRF24_H
 
-#define ENRF24_LIBRARY_VERSION 1.5
+#define ENRF24_LIBRARY_VERSION 1.6
 
 #include <Energia.h>
 #include <Print.h>
