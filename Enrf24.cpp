@@ -22,7 +22,7 @@
  *  DEALINGS IN THE SOFTWARE.
  */
 
-#include <Energia.h>
+#include <Arduino.h>
 #include <stdint.h>
 #include "Enrf24.h"
 

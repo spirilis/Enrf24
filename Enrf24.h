@@ -27,7 +27,7 @@
 
 #define ENRF24_LIBRARY_VERSION 1.6
 
-#include <Energia.h>
+#include <Arduino.h>
 #include <Print.h>
 #include <SPI.h>
 #include <stdint.h>
