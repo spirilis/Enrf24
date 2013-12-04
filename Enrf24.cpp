@@ -481,14 +481,16 @@ void Enrf24::setTXpower(int8_t dBm)
   uint8_t reg, pwr;
 
   reg = _readReg(RF24_RF_SETUP) & 0xF8;  // preserve RF speed settings
-  pwr = 0x03;
+  pwr = 0x06;
+  if (dBm >= 7)
+    pwr = 0x07;
   if (dBm < 0)
-    pwr = 0x02;
+    pwr = 0x04;
   if (dBm < -6)
-    pwr = 0x01;
+    pwr = 0x02;
   if (dBm < -12)
     pwr = 0x00;
-  _writeReg(RF24_RF_SETUP, reg | (pwr << 1));
+  _writeReg(RF24_RF_SETUP, reg | pwr);
 }
 
 void Enrf24::setSpeed(uint32_t rfspeed)
