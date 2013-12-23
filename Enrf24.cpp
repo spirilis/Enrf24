@@ -339,10 +339,10 @@ void Enrf24::flush()
 
   reg = _readReg(RF24_CONFIG);
   if ( !(reg & RF24_PWR_UP) ) {
-    digitalWrite(_cePin, HIGH);  // Workaround for SI24R1 knockoff chips
+    //digitalWrite(_cePin, HIGH);  // Workaround for SI24R1 knockoff chips
     _writeReg(RF24_CONFIG, ENRF24_CFGMASK_IRQ | ENRF24_CFGMASK_CRC(reg) | RF24_PWR_UP);
     delay(5);  // 5ms delay required for nRF24 oscillator start-up
-    digitalWrite(_cePin, LOW);
+    //digitalWrite(_cePin, LOW);
   }
   if (reg & RF24_PRIM_RX) {
     origrx=true;
@@ -352,7 +352,7 @@ void Enrf24::flush()
 
   _issueCmdPayload(RF24_W_TX_PAYLOAD, txbuf, txbuf_len);
   digitalWrite(_cePin, HIGH);
-  delayMicroseconds(30);
+  delayMicroseconds(100);
   digitalWrite(_cePin, LOW);
 
   txbuf_len = 0;  // Reset TX ring buffer
