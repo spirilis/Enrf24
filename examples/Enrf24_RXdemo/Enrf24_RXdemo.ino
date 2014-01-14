@@ -16,7 +16,7 @@ void setup() {
 
   SPI.begin();
   SPI.setDataMode(SPI_MODE0);
-  SPI.setBitOrder(1); // MSB-first
+  SPI.setBitOrder(MSBFIRST);
   
   radio.begin();  // Defaults 1Mbps, channel 0, max TX power
   dump_radio_status_to_serialport(radio.radioState());

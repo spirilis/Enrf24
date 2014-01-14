@@ -9,7 +9,7 @@ void setup()
   Serial.begin(9600);  // Serial port used to display scan results
   SPI.begin();
   SPI.setDataMode(SPI_MODE0);
-  SPI.setBitOrder(1);
+  SPI.setBitOrder(MSBFIRST);
   
   radio.begin();  // Default 1Mbps, put 250000 or 2000000 to test those bitrates
   radio.enableRX();  // Wake up the transceiver
