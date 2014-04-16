@@ -318,6 +318,9 @@ void Enrf24::flush()
 
   reg = _readReg(RF24_FIFO_STATUS);
   if (reg & BIT5) {  // RF24_TX_FULL #define is BIT0, which is not the correct bit for FIFO_STATUS.
+    // Seen this before with a user whose CE pin was messed up.
+    _issueCmd(RF24_FLUSH_TX);
+    txbuf_len = 0;
     return;  // Should never happen, but nonetheless a precaution to take.
   }
 
