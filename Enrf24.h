@@ -25,7 +25,7 @@
 #ifndef _ENRF24_H
 #define _ENRF24_H
 
-#define ENRF24_LIBRARY_VERSION 1.6
+#define ENRF24_LIBRARY_VERSION "1.7"
 
 #include <Arduino.h>
 #include <Print.h>
