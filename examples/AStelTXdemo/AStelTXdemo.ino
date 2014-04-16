@@ -32,7 +32,6 @@ void loop() {
   radio.print(str_on);
   radio.flush();  // Force transmit (don't wait for any more data)
   dump_radio_status_to_serialport(radio.radioState());  // Should report IDLE
-  // If it's still Actively Transmitting, check your CE pin is hooked up correctly!
   delay(1000);
 
   Serial.print("Sending packet: ");
@@ -40,7 +39,6 @@ void loop() {
   radio.print(str_off);
   radio.flush();  //
   dump_radio_status_to_serialport(radio.radioState());  // Should report IDLE
-  // If it's still Actively Transmitting, check your CE pin is hooked up correctly!
   delay(1000);
 }
 
