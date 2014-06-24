@@ -25,7 +25,7 @@
 #ifndef _ENRF24_H
 #define _ENRF24_H
 
-#define ENRF24_LIBRARY_VERSION "1.7"
+#define ENRF24_LIBRARY_VERSION "1.8"
 
 #include <Arduino.h>
 #include <Print.h>
@@ -33,7 +33,7 @@
 #include <stdint.h>
 #include "nRF24L01.h"
 
-#if defined(__LM4F120H5QR__)
+#if defined(TARGET_IS_SNOWFLAKE_RA0) || defined(TARGET_IS_SNOWFLAKE_RA1) || defined(TARGET_IS_BLIZZARD_RB1)
 #include <inc/hw_types.h>
 #include <inc/hw_memmap.h>
 #include <driverlib/sysctl.h>
