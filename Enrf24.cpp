@@ -561,3 +561,68 @@ boolean Enrf24::rfSignalDetected()
   rpd = _readReg(RF24_RPD);
   return (boolean)rpd;
 }
+
+uint32_t Enrf24::getSpeed()
+{
+  uint8_t reg = _readReg(RF24_RF_SETUP) & 0x28;
+
+  switch (reg) {
+    case 0x00:
+      return 1000000UL;
+    case 0x08:
+      return 2000000UL;
+    case 0x20:
+      return 250000UL;
+  }
+  return 0UL;
+}
+
+int8_t Enrf24::getTXpower()
+{
+  uint8_t reg = _readReg(RF24_RF_SETUP) & 0x07;
+
+  if (reg & 0x01)
+    return 7;  // SI24R1-only +7dBm mode
+  switch (reg) {
+    case 0x02:
+      return -12;
+    case 0x04:
+      return -6;
+    case 0x06:
+      return 0;
+  }
+  return -18;
+}
+
+boolean Enrf24::getAutoAck()
+{
+  uint8_t reg = _readReg(RF24_EN_AA);
+
+  if (reg)
+    return true;
+  return false;
+}
+
+void Enrf24::getRXaddress(void *buf)
+{
+  _readRegMultiLSB(RF24_RX_ADDR_P1, (uint8_t*)buf, rf_addr_width);
+}
+
+void Enrf24::getTXaddress(void *buf)
+{
+  _readRegMultiLSB(RF24_TX_ADDR, (uint8_t*)buf, rf_addr_width);
+}
+
+unsigned int Enrf24::getCRC()
+{
+  uint8_t reg = _readReg(RF24_CONFIG) & 0x0C;
+
+  switch (reg) {
+    case 0x08:
+      return 8;
+    case 0x0C:
+      return 16;
+  }
+
+  return 0;
+}

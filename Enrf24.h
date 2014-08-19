@@ -25,7 +25,7 @@
 #ifndef _ENRF24_H
 #define _ENRF24_H
 
-#define ENRF24_LIBRARY_VERSION "1.8"
+#define ENRF24_LIBRARY_VERSION "1.9"
 
 #include <Arduino.h>
 #include <Print.h>
@@ -129,6 +129,17 @@ class Enrf24 : public Print {
     boolean rfSignalDetected();  /* Read RPD register to determine if transceiver has presently detected an RF signal
                                   * of -64dBm or greater.  Only works in PRX (enableRX()) mode.
                                   */
+
+    // Query current parameters
+    int getChannel(void) { return rf_channel; };
+    uint32_t getSpeed(void);
+    int8_t getTXpower(void);
+    size_t getAddressLength(void) { return rf_addr_width; };
+    void getRXaddress(void *);
+    void getTXaddress(void *);
+    boolean getAutoAck(void);
+    unsigned int getCRC(void);
+
 
   private:
     uint8_t rf_status;
