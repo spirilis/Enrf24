@@ -131,7 +131,7 @@ class Enrf24 : public Print {
                                   */
 
     // Query current parameters
-    int getChannel(void) { return rf_channel; };
+    int getChannel(void) { return _readReg(RF24_RF_CH); };
     uint32_t getSpeed(void);
     int8_t getTXpower(void);
     size_t getAddressLength(void) { return rf_addr_width; };
@@ -143,8 +143,6 @@ class Enrf24 : public Print {
 
   private:
     uint8_t rf_status;
-    uint8_t rf_channel;
-    uint8_t rf_speed;  // Stored in native RF_SETUP register format
     uint8_t rf_addr_width;
     uint8_t txbuf_len;
     uint8_t txbuf[32];
