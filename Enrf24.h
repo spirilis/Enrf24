@@ -94,6 +94,7 @@ class Enrf24 : public Print {
                                                    * null '\0' is tacked onto the end.
                                                    */
     virtual size_t write(uint8_t);  // Single-byte write, implements TX ring-buffer & auto-send
+    virtual size_t write(const void *buf, size_t len) { write((const uint8_t *)buf, len); };
     using Print::write;  // Includes the multi-byte write for repeatedly hitting write(uint8_t)
     void flush();    // Force transmission of TX ring buffer contents
     void purge();    // Ignore TX ring buffer contents, return ring pointer to 0.
