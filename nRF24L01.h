@@ -117,5 +117,6 @@
 #define RF24_W_ACK_PAYLOAD 0xA8
 #define RF24_W_TX_PAYLOAD_NOACK 0xB0
 #define RF24_NOP           0xFF
+#define RF24_ACTIVATE      0x50
 
 #endif

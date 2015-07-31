@@ -67,6 +67,9 @@ void Enrf24::begin(uint32_t datarate, uint8_t channel)
   _writeReg(RF24_STATUS, ENRF24_IRQ_MASK);  // Clear all IRQs
   _writeReg(RF24_DYNPD, 0x03);
   _writeReg(RF24_FEATURE, RF24_EN_DPL);  // Dynamic payloads enabled by default
+  // For HopeRF RF75 - issue ACTIVATE command to enable R_RX_PL_WID
+  uint8_t _activate_data = 0x73;
+  _issueCmdPayload(RF24_ACTIVATE, &_activate_data, 1);
 
   // Set all parameters
   if (channel > 125)
