@@ -85,6 +85,7 @@ class Enrf24 : public Print {
     Enrf24(uint8_t cePin, uint8_t csnPin, uint8_t irqPin);
     void begin(uint32_t datarate=1000000, uint8_t channel=0);  // Specify bitrate & channel
     void end();      // Shut it off, clear the library's state
+    void setSPI(SPIClass *spi_instance_ptr) { spibus = spi_instance_ptr; }  // Change the SPI instance used
 
     // I/O
     boolean available(boolean checkIrq=false);  // Check if incoming data is ready to be read
@@ -149,6 +150,7 @@ class Enrf24 : public Print {
     uint8_t txbuf[32];
     uint8_t lastirq, readpending;
     uint8_t _cePin, _csnPin, _irqPin;
+    SPIClass *spibus;
 
     uint8_t _readReg(uint8_t addr);
     void _readRegMultiLSB(uint8_t addr, uint8_t *buf, size_t len);

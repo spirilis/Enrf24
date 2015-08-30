@@ -32,6 +32,7 @@ Enrf24::Enrf24(uint8_t cePin, uint8_t csnPin, uint8_t irqPin)
   _cePin = cePin;
   _csnPin = csnPin;
   _irqPin = irqPin;
+  spibus = &SPI;
 
   rf_status = 0;
   rf_addr_width = 5;
@@ -49,7 +50,7 @@ void Enrf24::begin(uint32_t datarate, uint8_t channel)
   pinMode(_irqPin, INPUT);
   digitalWrite(_irqPin, LOW);  // No pullups; the transceiver provides this!
 
-  SPI.transfer(0);  // Strawman transfer, fixes USCI issue on G2553
+  spibus->transfer(0);  // Strawman transfer, fixes USCI issue on G2553
 
   // Is the transceiver present/alive?
   if (!_isAlive())
@@ -117,8 +118,8 @@ uint8_t Enrf24::_readReg(uint8_t addr)
   uint8_t result;
 
   digitalWrite(_csnPin, LOW);
-  rf_status = SPI.transfer(RF24_R_REGISTER | addr);
-  result = SPI.transfer(RF24_NOP);
+  rf_status = spibus->transfer(RF24_R_REGISTER | addr);
+  result = spibus->transfer(RF24_NOP);
   digitalWrite(_csnPin, HIGH);
   return result;
 }
@@ -127,9 +128,9 @@ void Enrf24::_readRegMultiLSB(uint8_t addr, uint8_t *buf, size_t len)
 {
   uint8_t i;
   digitalWrite(_csnPin, LOW);
-  rf_status = SPI.transfer(RF24_R_REGISTER | addr);
+  rf_status = spibus->transfer(RF24_R_REGISTER | addr);
   for (i=0; i<len; i++) {
-    buf[len-i-1] = SPI.transfer(RF24_NOP);
+    buf[len-i-1] = spibus->transfer(RF24_NOP);
   }
   digitalWrite(_csnPin, HIGH);
 }
@@ -137,8 +138,8 @@ void Enrf24::_readRegMultiLSB(uint8_t addr, uint8_t *buf, size_t len)
 void Enrf24::_writeReg(uint8_t addr, uint8_t val)
 {
   digitalWrite(_csnPin, LOW);
-  rf_status = SPI.transfer(RF24_W_REGISTER | addr);
-  SPI.transfer(val);
+  rf_status = spibus->transfer(RF24_W_REGISTER | addr);
+  spibus->transfer(val);
   digitalWrite(_csnPin, HIGH);
 }
 
@@ -147,9 +148,9 @@ void Enrf24::_writeRegMultiLSB(uint8_t addr, uint8_t *buf, size_t len)
   size_t i;
 
   digitalWrite(_csnPin, LOW);
-  rf_status = SPI.transfer(RF24_W_REGISTER | addr);
+  rf_status = spibus->transfer(RF24_W_REGISTER | addr);
   for (i=0; i<len; i++) {
-    SPI.transfer(buf[len-i-1]);
+    spibus->transfer(buf[len-i-1]);
   }
   digitalWrite(_csnPin, HIGH);
 }
@@ -157,7 +158,7 @@ void Enrf24::_writeRegMultiLSB(uint8_t addr, uint8_t *buf, size_t len)
 void Enrf24::_issueCmd(uint8_t cmd)
 {
   digitalWrite(_csnPin, LOW);
-  rf_status = SPI.transfer(cmd);
+  rf_status = spibus->transfer(cmd);
   digitalWrite(_csnPin, HIGH);
 }
 
@@ -166,9 +167,9 @@ void Enrf24::_issueCmdPayload(uint8_t cmd, uint8_t *buf, size_t len)
   size_t i;
 
   digitalWrite(_csnPin, LOW);
-  rf_status = SPI.transfer(cmd);
+  rf_status = spibus->transfer(cmd);
   for (i=0; i<len; i++) {
-    SPI.transfer(buf[i]);
+    spibus->transfer(buf[i]);
   }
   digitalWrite(_csnPin, HIGH);
 }
@@ -178,12 +179,12 @@ void Enrf24::_readCmdPayload(uint8_t cmd, uint8_t *buf, size_t len, size_t maxle
   size_t i;
 
   digitalWrite(_csnPin, LOW);
-  rf_status = SPI.transfer(cmd);
+  rf_status = spibus->transfer(cmd);
   for (i=0; i<len; i++) {
     if (i < maxlen) {
-      buf[i] = SPI.transfer(RF24_NOP);
+      buf[i] = spibus->transfer(RF24_NOP);
     } else {
-      SPI.transfer(RF24_NOP);  // Beyond maxlen bytes, just discard the remaining data.
+      spibus->transfer(RF24_NOP);  // Beyond maxlen bytes, just discard the remaining data.
     }
   }
   digitalWrite(_csnPin, HIGH);
