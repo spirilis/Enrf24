@@ -48,7 +48,7 @@ void Enrf24::begin(uint32_t datarate, uint8_t channel)
   pinMode(_csnPin, OUTPUT);
   digitalWrite(_csnPin, HIGH);
   pinMode(_irqPin, INPUT);
-  digitalWrite(_irqPin, LOW);  // No pullups; the transceiver provides this!
+  //digitalWrite(_irqPin, LOW);  // No pullups; the transceiver provides this!
 
   spibus->transfer(0);  // Strawman transfer, fixes USCI issue on G2553
 
@@ -264,17 +264,19 @@ void Enrf24::_maintenanceHook()
      * its address gets reset to the module's default and we do not care about data
      * coming in to that address...
      */
-    _readCmdPayload(RF24_R_RX_PL_WID, &i, 1, 1);
-    if (i == 0 || i > 32 || ((rf_status & 0x0E) >> 1) == 0) {
-                             /* Zero-width RX payload is an error that happens a lot
-                              * with non-AutoAck, and must be cleared with FLUSH_RX.
-                              * Erroneous >32byte packets are a similar phenomenon.
-                              */
-      _issueCmd(RF24_FLUSH_RX);
-      _irq_clear(ENRF24_IRQ_RX);
-      readpending = 0;
-    } else {
-      readpending = 1;
+    if ( (rf_status & 0x0E) != 0x0E ) {  // Only check if there is an actual packet
+      _readCmdPayload(RF24_R_RX_PL_WID, &i, 1, 1);
+      if (i == 0 || i > 32 || ((rf_status & 0x0E) >> 1) == 0) {
+                               /* Zero-width RX payload is an error that happens a lot
+                                * with non-AutoAck, and must be cleared with FLUSH_RX.
+                                * Erroneous >32byte packets are a similar phenomenon.
+                                */
+        _issueCmd(RF24_FLUSH_RX);
+        _irq_clear(ENRF24_IRQ_RX);
+        readpending = 0;
+      } else {
+        readpending = 1;
+      }
     }
     // Actual scavenging of RX queues is performed by user-directed use of read().
   }
