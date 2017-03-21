@@ -1,7 +1,7 @@
+#include <SPI.h>
 #include <Enrf24.h>
 #include <nRF24L01.h>
 #include <string.h>
-#include <SPI.h>
 
 Enrf24 radio(P2_0, P2_1, P2_2);  // P2.0=CE, P2.1=CSN, P2.2=IRQ
 const uint8_t txaddr[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0x01 };

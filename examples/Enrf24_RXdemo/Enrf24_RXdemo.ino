@@ -1,7 +1,7 @@
+#include <SPI.h>
 #include <Enrf24.h>
 #include <nRF24L01.h>
 #include <string.h>
-#include <SPI.h>
 
 Enrf24 radio(P2_0, P2_1, P2_2);
 const uint8_t rxaddr[] = { 0xDE, 0xAD, 0xBE, 0xEF, 0x01 };
